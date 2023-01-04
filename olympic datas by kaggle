@@ -1,0 +1,331 @@
+-- 1. How many olym0 pics games have been held?
+
+SELECT COUNT ( distinct Games) from Olympic_History
+
+
+
+
+
+----------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+
+-- 2. List down all Olympics games held so far.
+
+SELECT  distinct Year, games, season, city from OLYMPIC_HISTORY
+order by year
+
+----------------------------------------------------------------------------------------------------------------------------------------------
+
+--Mention the total no of nations who participated in each olympics game?
+
+
+WITH CTE_Numb as (
+SELECT a.Games , r.Region   from OLYMPIC_HISTORY a
+JOIN Regions r
+ON
+a.NOC= r.NOC
+GROUP BY Games,Region)
+
+SELECT Games,count(region) from CTE_Numb  group by games  order by Games desc  
+
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+-- Write a SQL query to return the Olympic Games which had the highest participating countries and the lowest participating countries.
+WITH cte_Result as(
+SELECT  Games ,COUNT (region) AS Countries FROM OLYMPIC_HISTORY a
+join Regions r ON a.NOC= r.NOC
+GROUP BY Year, Games),
+
+c2 as (SELECT    MAX(Games) as highest_participating,MIN(Games) as lowest_Participating,  MAX(Countries) as Highest,
+MIN(Countries) as Lowest from cte_Result)
+
+select concat(highest_participating ,' ' ,Highest ) as Highest_C , concat (lowest_Participating, ' ', Lowest) 
+as Lowest_c from c2
+
+-- 5. Which nation has participated in all of the olympic games?
+--SQL query to return the list of countries who have been part of every Olympics games.
+
+
+
+SELECT * FROM OLYMPIC_HISTORY
+SELECT * FROM Regions
+
+
+
+ select Region_game.Region as Nation,count (distinct(region_game.games)) as particpation_times from
+
+ (select  Regions.region,Olympic_History.Games
+from OLYMPIC_HISTORY
+ right join Regions on  OLYMPIC_HISTORY.NOC=Regions.NOC )as region_game  
+group by region_game.region
+order by 2 desc  
+
+------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+--6.Identify the sport which was played in all summer olympics.
+
+WITH C as(
+ SELECT   count (distinct Games) as total_summergames FROM OLYMPIC_HISTORY where Season = 'Summer'),
+
+ C2 as(
+ SELECT Distinct Sport, Games from OLYMPIC_HISTORY where Season= 'Summer'),
+
+ C3 as(
+ SELECT Sport,count(games)  as total_game from C2 group by sport)
+
+ SELECT * FROM C3 
+ JOIN C ON C.total_summergames= C3.total_game  ORDER BY Sport
+
+
+-------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+-- 5. Which nation has participated in all of the olympic games?
+--SQL query to return the list of countries who have been part of every Olympics games.
+WITH C as(
+SELECT  count ( DISTINCT Games )  AS total_Olympic_Games from OLYMPIC_HISTORY),
+
+C2 as(  SELECT   Distinct Region AS Country , Games as total_g FROM OLYMPIC_HISTORY o 
+JOIN Regions r ON r.NOC= o.NOC group by games, region), --SELECT COUNT ( Distinct  Region ) as Countries from Regions),
+
+ C3 AS (
+
+SELECT country,  count (Country) AS participation_counts from C2 group by  country )
+
+SELECT * FROM C3 ORDER BY participation_counts DESC --JOIN C ON  C.total_Olympic_Games = C3.participation_counts order by participation_counts desc
+
+
+
+
+
+
+
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+-- 7.Which Sports were just played only once in the olympics.
+
+with c1 as(
+SELECT    distinct sport as Sports,  Games as Olympic_Games from OLYMPIC_HISTORY ),
+
+ c2 as 
+ (SELECT  distinct (Olympic_Games), count (  sports) as c ,  sports from c1 group by Olympic_games, sports)
+ 
+ select * from c2 
+
+
+ with c1 as (
+ select  count ( sport) as freq , Games , sport from OLYMPIC_HISTORY group by sport, Games ),
+
+
+
+ c2 as(
+ select   distinct( sport) as Sports, count( freq) as Number 
+ from c1  group by  sport )
+
+ select  Sports, Number from c2  where number=1 order by sports
+
+
+
+ ----------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+ -- 8. Fetch the total no of sports played in each olympic games.
+
+ 
+WITH C as(
+ SELECT   count (distinct sport)  as total_games FROM OLYMPIC_HISTORY ) ,-- where Season = '"Summer"'),
+
+ C2 as(
+ SELECT Distinct Sport, Games from OLYMPIC_HISTORY ), --where Season= '"Summer"'),
+
+ C3 as(
+ SELECT Games , count(games)  as total_game from C2 group by  Games)
+
+ SELECT * FROM C3 order by games 
+
+ select * from olympic_history
+
+ ------------------------------------------------------------------------------------------------------------------------------------------------
+
+ --  9 . Fetch oldest athletes to win a gold medal?
+
+ SELECT name ,medal,  sex,  age from Olympic_History   where Medal = 'gold'  order by age desc
+
+
+ with c1 as(
+ SELECT name ,medal,  sex,  age from Olympic_History   where Medal = 'gold' ),
+
+ranks as(
+
+ select *, rank() over (order by age desc) as'rank'
+from c1 where medal= 'gold' )
+
+SELECT * FROM RANKS WHERE RANK=1
+
+----------------------------------------------------------------------------------------------------------------------------------------------------------------
+--10 FIND THE RATIO OF MALE AND FEMALE ATHLETES PARTICIPATED IN ALL OLYMPIC GAMES.
+
+SELECT 
+     SUM( CASE WHEN SEX = 'M' THEN 1 ELSE 0 END ) 
+        / SUM( CASE WHEN SEX = 'F' THEN 1 ELSE 0 END ) * 1.0 AS RATIO
+FROM OLYMPIC_HISTORY
+
+
+With T1 As 
+(Select Count(Sex) Female_number From OLYMPIC_HISTORY Where Sex = 'F'),
+
+T2 As (Select Count(Sex) Male_number From OLYMPIC_HISTORY Where Sex = 'M')
+
+Select CONCAT('1:', Cast(Round(Male_number/Cast(Female_number As decimal(7,2)),2) As Float)) As Ratio From T1,T2
+
+
+-------------------------------------------------------------------------------------------------------------------------------------------------------
+ 
+ SELECT * FROM OLYMPIC_HISTORY
+
+ -- 11. Fetch the top 5 athletes who have won the most gold medals.
+
+  with c1 as(
+   SELECT name,  COUNT(Medal)as medal from olympic_History
+  where medal='Gold' group by name),
+
+  c2 as ( select name, medal , dense_rank () over(order by medal desc ) as ranks  from c1)
+
+  select  name, medal  from c2 where ranks <=5
+
+
+----------------------------------------------------------------------------------------------------------------------------------------
+
+
+--12 Fetch the top 5 athletes who have won the most medals (gold/silver/bronze)
+
+with c1 as(
+   SELECT name,  COUNT(Medal)as medal from olympic_History
+   WHERE medal IN ('Gold','Bronze', 'Silver') group by name),
+
+  c2 as ( select name, medal , dense_rank () over(order by medal desc ) as ranks  from c1)
+
+  select  name, medal  from c2 where ranks <=5
+
+-----------------------------------------------------------------------------------------------------------------------------------------------------
+
+-- 13. Fetch the top 5 most successful countries in olympics. Success is defined by no of medals won.
+
+
+with c1 as(
+   SELECT region,  COUNT(Medal)as medal from olympic_History o join regions r on o.NOC= r.NOC
+   WHERE medal IN ('Gold','Bronze', 'Silver') group by region),
+
+  c2 as ( select region, medal , dense_rank () over(order by medal desc ) as ranks  from c1)
+
+  select  region, medal  from c2 where ranks <=5
+
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+ --14.  Identify which country won the most gold, most silver and most bronze medals in each olympic games.
+
+
+ Select r.Region,
+Count(Case When  Medal='Gold' Then 1 End) AS Gold,
+Count(Case When Medal='Silver' Then 1 End) AS Silver,
+Count(Case When  Medal='Bronze' Then 1 End) AS Bronze
+from OLYMPIC_HISTORY O
+Join REGIONS r On o.NOC= r.NOC
+Group by region
+Order By Gold Desc,Silver Desc,Bronze Desc
+
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+-- 15. List down total gold, silver and bronze medals won by each country corresponding to each olympic games.
+
+
+ Select r.Region, Games,
+Count(Case When  Medal='Gold' Then 1 End) AS Gold,
+Count(Case When Medal='Silver' Then 1 End) AS Silver,
+Count(Case When  Medal='Bronze' Then 1 End) AS Bronze
+from OLYMPIC_HISTORY O
+Join REGIONS r On o.NOC= r.NOC
+Group by region, Games 
+Order By Gold Desc,Silver Desc,Bronze Desc
+
+
+----------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+-- 16 Identify which country won the most gold, most silver and most bronze medals in each olympic games?
+
+
+
+WITH C1 AS (
+Select r.Region, Games,
+Count(Case When  Medal='Gold' Then 1 End) AS Gold,
+Count(Case When Medal='Silver' Then 1 End) AS Silver,
+Count(Case When  Medal='Bronze' Then 1 End) AS Bronze
+from OLYMPIC_HISTORY O
+Join REGIONS r On o.NOC= r.NOC
+Group by region, Games )
+-- Order By Gold Desc,Silver Desc,Bronze Desc
+
+
+SELECT DISTINCT Games , 
+
+CONCAT (
+ 
+(FIRST_VALUE(region) Over(partition by games order by Gold desc)),
+'-',
+(FIRST_VALUE(Gold) Over(partition by games order by Gold desc))) As Max_Gold,
+Concat(
+(FIRST_VALUE(region) Over(partition by games order by Silver desc)),
+'-',
+(FIRST_VALUE(Silver) Over(partition by games order by Silver desc))) As Max_Silver,
+Concat(
+(FIRST_VALUE(region) Over(partition by games order by Bronze desc)),
+'-',
+(FIRST_VALUE(Bronze) Over(partition by games order by Bronze desc))) As Max_Bronze
+
+from C1 ORDER BY Games 
+
+
+
+
+
+
+
+
+
+
+--18  Which countries have never won gold medal but have won silver/bronze medals?
+
+
+with c1 as
+( select region, sum ( case when medal = 'gold' then 1 else 0 end) as gold,
+sum (case when medal = 'silver' then 1 else 0 end) as silver,
+sum( case when medal = 'bronze' then 1 else 0 end) as bronze
+from Olympic_History o  join Regions r on o.NOC= r.NOC
+group by region )
+
+select region gold, silver, bronze from c1 where gold = 0 and silver > 0 or bronze > 0 
+
+-------------------------------------------------------------------------------------------------------------------------------------------
+
+-- 19 .In which Sport/event, India has won highest medals.
+
+SELECT    top 1 sport, COUNT (medal) as count_of_medals   
+FROM Olympic_History o
+join Regions r 
+on r.Noc= o.Noc where medal <> 'NA' and   o.NOC = 'IND'  group by sport order by count_of_medals desc
+ 
+
+
+----------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+-- 20. Break down all olympic games where India won medal for Hockey and how many medals in each olympic games
+ SELECT  games, sport,  COUNT (medal) as count_of_medals   
+FROM Olympic_History o
+join Regions r 
+on r.Noc= o.Noc where medal <> 'NA' and   o.NOC = 'IND' and sport= 'Hockey'  group by sport, games  order by count_of_medals desc
+
+
+
